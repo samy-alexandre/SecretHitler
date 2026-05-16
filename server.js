@@ -11,7 +11,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const games = {};
 
-// Paquet officiel : 6 lois Libérales et 11 lois Fascistes
+// Paquet officiel de départ : 6 lois Libérales et 11 lois Fascistes
 function generateDeck() {
     let deck = [];
     for (let i = 0; i < 6; i++) deck.push('LIBERAL');
@@ -19,7 +19,7 @@ function generateDeck() {
     return deck.sort(() => Math.random() - 0.5);
 }
 
-// Calculer le contenu de la pioche actuelle pour le transmettre aux clients
+// Calculer la composition exacte restante
 function getDeckComposition(deck) {
     let lib = 0;
     let fasc = 0;
@@ -30,12 +30,9 @@ function getDeckComposition(deck) {
     return { total: deck.length, liberal: lib, fascist: fasc };
 }
 
-// Attribution stricte et équilibrée avec obligatoirement 1 Hitler et des Fascistes alliés
 function assignRoles(playerList) {
     const count = playerList.length;
     let roles = [];
-    
-    // De 5 à 6 joueurs : 1 Hitler, 1 Fasciste, le reste en Libéraux
     roles.push("Hitler");
     roles.push("Fascist");
     while (roles.length < count) {
@@ -59,8 +56,7 @@ io.on('connection', (socket) => {
             currentChancellor: null,
             votesReceived: {},
             deck: [],
-            discardPile: 0,
-            legislativeCards: []
+            discardPile: [] // Transformé en tableau pour suivre les vraies cartes défaussées !
         };
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
@@ -71,8 +67,7 @@ io.on('connection', (socket) => {
         const game = games[roomCode];
         if (!game) return socket.emit('error', 'Salon introuvable !');
         if (game.status !== 'lobby') return socket.emit('error', 'Partie déjà lancée !');
-        if (game.players.length >= 10) return socket.emit('error', 'Salon complet !');
-
+        
         game.players.push({ id: socket.id, username: username, isBot: false, role: null });
         socket.join(roomCode);
         io.to(roomCode).emit('updatePlayers', games[roomCode].players.map(p => p.username));
@@ -102,7 +97,8 @@ io.on('connection', (socket) => {
         game.fascistPolicies = 0;
         game.presidentIndex = 0;
         game.deck = generateDeck();
-        game.discardPile = 0;
+        game.discardPile = [];
+        game.legislativeCards = [];
 
         const shuffledRoles = assignRoles(game.players);
         game.players.forEach((player, index) => { player.role = shuffledRoles[index]; });
@@ -110,12 +106,9 @@ io.on('connection', (socket) => {
         const allUsernames = game.players.map(p => p.username);
         game.currentPresident = game.players[game.presidentIndex].username;
 
-        // Transmission des données de vision secrète
         game.players.forEach(player => {
             if (!player.isBot) {
                 let visibleRoles = {};
-                
-                // Si le joueur est Fasciste ou Hitler (à 5-6 joueurs), ils se connaissent mutuellement
                 if (player.role === 'Fascist' || player.role === 'Hitler') {
                     game.players.forEach(other => {
                         if (other.username !== player.username && (other.role === 'Fascist' || other.role === 'Hitler')) {
@@ -130,7 +123,8 @@ io.on('connection', (socket) => {
                     visibleRoles: visibleRoles,
                     presidentIndex: game.presidentIndex,
                     roomCode: roomCode,
-                    deckComposition: getDeckComposition(game.deck)
+                    deckComposition: getDeckComposition(game.deck),
+                    discardCount: game.discardPile.length
                 });
             }
         });
@@ -147,7 +141,7 @@ io.on('connection', (socket) => {
         if (game.fascistPolicies >= 3 && chancellorPlayer && chancellorPlayer.role === "Hitler") {
             io.to(roomCode).emit('gameOver', {
                 winner: 'FASCIST',
-                reason: `Hitler (${chancellorName}) a été élu Chancelier alors que 3 lois fascistes sont en place. Victoire Fasciste !`
+                reason: `Hitler (${chancellorName}) a été élu Chancelier avec 3 lois fascistes sur le plateau !`
             });
             game.status = 'game_over';
             return;
@@ -190,14 +184,23 @@ io.on('connection', (socket) => {
             });
 
             if (passed) {
+                // S'il reste moins de 3 cartes, on prend la défausse existante et on la remélange dans la pioche !
                 if (game.deck.length < 3) {
-                    game.deck = generateDeck();
-                    game.discardPile = 0;
+                    game.deck = [...game.deck, ...game.discardPile].sort(() => Math.random() - 0.5);
+                    game.discardPile = [];
                 }
+                
+                // On pioche strictement 3 cartes
                 game.legislativeCards = [game.deck.pop(), game.deck.pop(), game.deck.pop()];
 
+                // Envoyer la mise à jour immédiate du nombre de cartes après pioche
+                io.to(roomCode).emit('updateDeckCounts', {
+                    cardsCount: game.deck.length,
+                    discardCount: game.discardPile.length,
+                    deckComposition: getDeckComposition(game.deck)
+                });
+
                 const currentPresPlayer = game.players.find(p => p.username === game.currentPresident);
-                
                 if (currentPresPlayer && currentPresPlayer.isBot) {
                     setTimeout(() => {
                         handlePresidentDiscardLogic(game, roomCode, Math.floor(Math.random() * 3));
@@ -232,18 +235,20 @@ io.on('connection', (socket) => {
     });
 
     function handlePresidentDiscardLogic(game, roomCode, discardedIndex) {
-        game.legislativeCards.splice(discardedIndex, 1);
-        game.discardPile++;
+        // Le président choisit sa carte à jeter, elle va dans la défausse
+        const discarded = game.legislativeCards.splice(discardedIndex, 1)[0];
+        game.discardPile.push(discarded);
 
         const chancellorPlayer = game.players.find(p => p.username === game.currentChancellor);
 
         if (chancellorPlayer && chancellorPlayer.isBot) {
             setTimeout(() => {
                 const botDiscardIdx = Math.floor(Math.random() * game.legislativeCards.length);
-                game.legislativeCards.splice(botDiscardIdx, 1);
-                game.discardPile++;
+                const botDiscarded = game.legislativeCards.splice(botDiscardIdx, 1)[0];
+                game.discardPile.push(botDiscarded);
 
                 const finalPolicy = game.legislativeCards[0];
+                game.legislativeCards = []; // Vider le reliquat proprement
                 enactFinalPolicy(game, roomCode, finalPolicy);
             }, 2000);
         } else {
@@ -258,10 +263,13 @@ io.on('connection', (socket) => {
         const game = games[roomCode];
         if (!game) return;
 
-        game.legislativeCards.splice(discardedIndex, 1);
-        game.discardPile++;
+        // Le chancelier choisit sa carte à jeter, elle va en défausse
+        const discarded = game.legislativeCards.splice(discardedIndex, 1)[0];
+        game.discardPile.push(discarded);
 
+        // La dernière carte restante est promulguée
         const finalPolicy = game.legislativeCards[0];
+        game.legislativeCards = []; // Vider l'historique du tour
         enactFinalPolicy(game, roomCode, finalPolicy);
     });
 
@@ -274,7 +282,7 @@ io.on('connection', (socket) => {
             liberalCount: game.liberalPolicies,
             fascistCount: game.fascistPolicies,
             cardsCount: game.deck.length,
-            discardCount: game.discardPile,
+            discardCount: game.discardPile.length,
             deckComposition: getDeckComposition(game.deck)
         });
 
@@ -304,12 +312,12 @@ io.on('connection', (socket) => {
         game.presidentIndex = (game.presidentIndex + 1) % game.players.length;
         game.currentPresident = game.players[game.presidentIndex].username;
         game.currentChancellor = null;
-        game.legislativeCards = [];
 
         io.to(roomCode).emit('newTurn', {
             presidentIndex: game.presidentIndex,
             currentPresident: game.currentPresident,
-            deckComposition: getDeckComposition(game.deck)
+            deckComposition: getDeckComposition(game.deck),
+            discardCount: game.discardPile.length
         });
     }
 });
