@@ -240,7 +240,6 @@
             transform: scale(1.03);
         }
 
-        /* --- PLATEAU DE SÉLECTION DU MANDAT (IMAGE_3A3098) --- */
         .board-center-area {
             background-color: #23272a;
             border: 3px solid #1a1c1e;
@@ -268,7 +267,85 @@
             width: 80%;
         }
 
-        /* --- POPUPS MODALES --- */
+        /* --- DESSIN DES DEUX PLATEAUX DE LOIS EN BAS (IMAGE_3A2235) --- */
+        .game-boards-container {
+            margin-top: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .board-strip {
+            width: 100%;
+            max-width: 750px;
+            border-radius: 6px;
+            padding: 15px 20px;
+            box-sizing: border-box;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+            border: 4px solid #111214;
+        }
+
+        .board-strip.liberal-bg { background-color: #4a7c8c; }
+        .board-strip.fascist-bg { background-color: #cf5728; }
+
+        .board-header-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            margin-bottom: 12px;
+            color: #ffffff;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.4);
+        }
+        .fascist-bg .board-header-title { color: #1a1c1e; text-shadow: none; }
+
+        .slots-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .policy-slot {
+            flex: 1;
+            height: 110px;
+            border: 3px dashed rgba(255,255,255,0.4);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: rgba(255,255,255,0.3);
+            position: relative;
+            background-color: rgba(0,0,0,0.1);
+        }
+        .fascist-bg .policy-slot { border-color: rgba(26,28,30,0.3); color: rgba(26,28,30,0.2); }
+
+        /* Quand la case est remplie par une loi */
+        .policy-slot.filled-liberal {
+            background-color: #ebdcb9;
+            border: 3px solid #bdae91;
+            color: #4a7c8c;
+            font-weight: 700;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .policy-slot.filled-fascist {
+            background-color: #1a1c1e;
+            border: 3px solid #cf5728;
+            color: #cf5728;
+            font-weight: 700;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        
+        .slot-label {
+            position: absolute;
+            bottom: 4px;
+            font-size: 9px;
+            font-weight: bold;
+            opacity: 0.6;
+        }
+
+        /* --- MODALES --- */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -382,7 +459,6 @@
             transform: scale(1.05);
         }
 
-        /* --- DESIGN DU PACK DE LOIS --- */
         .policy-flex {
             display: flex;
             justify-content: center;
@@ -431,7 +507,6 @@
             top: -15px;
         }
 
-        /* --- DESIGN DE LA POPUP DE LOI PROMULGUÉE (IMAGE_3A29D8) --- */
         .folder-container {
             display: flex;
             background-color: #ebdcb9;
@@ -548,7 +623,32 @@
                 </div>
             </div>
 
-            <div style="text-align: center; margin-top: 20px;">
+            <div class="game-boards-container">
+                <div class="board-strip liberal-bg">
+                    <div class="board-header-title">LIBERAL</div>
+                    <div class="slots-row" id="liberalSlotsRow">
+                        <div class="policy-slot" id="lib-slot-0"><span class="slot-label">LOI 1</span></div>
+                        <div class="policy-slot" id="lib-slot-1"><span class="slot-label">LOI 2</span></div>
+                        <div class="policy-slot" id="lib-slot-2"><span class="slot-label">LOI 3</span></div>
+                        <div class="policy-slot" id="lib-slot-3"><span class="slot-label">LOI 4</span></div>
+                        <div class="policy-slot" id="lib-slot-4"><span class="slot-label">LOI 5</span></div>
+                    </div>
+                </div>
+
+                <div class="board-strip fascist-bg">
+                    <div class="board-header-title">FASCIST</div>
+                    <div class="slots-row" id="fascistSlotsRow">
+                        <div class="policy-slot" id="fasc-slot-0"><span class="slot-label">LOI 1</span></div>
+                        <div class="policy-slot" id="fasc-slot-1"><span class="slot-label">LOI 2</span></div>
+                        <div class="policy-slot" id="fasc-slot-2"><span class="slot-label">LOI 3</span></div>
+                        <div class="policy-slot" id="fasc-slot-3"><span class="slot-label">LOI 4</span></div>
+                        <div class="policy-slot" id="fasc-slot-4"><span class="slot-label">LOI 5</span></div>
+                        <div class="policy-slot" id="fasc-slot-5"><span class="slot-label">LOI 6</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
                 <button id="nextLegislativeBtn" class="orange-btn" style="display: none;" onclick="openLegislativeSession()">Ouvrir la session législative</button>
                 <br>
                 <button onclick="window.location.reload()" style="font-size: 14px; padding: 6px 15px; margin-top: 15px;">Quitter la partie</button>
@@ -593,7 +693,7 @@
         <div class="modal-box" style="text-align: center;">
             <div class="modal-title" style="text-align: center; margin-bottom: 5px;">VOTING</div>
             <div id="votingAnnouncement" style="text-transform: none; color: #f1ebd9; font-size: 15px; margin-bottom: 10px; font-weight: bold;"></div>
-            <div style="text-transform: none; color: #b1a996; font-size: 14px; margin-bottom: 25px; max-width: 500px; margin-left: auto; margin-right: auto;"> Votez pour décider si vous souhaitez que ce gouvernement prenne le pouvoir. Le vote passe si plus de 50% des voix sont positives (JA!).</div>
+            <div style="text-transform: none; color: #b1a996; font-size: 14px; margin-bottom: 25px; max-width: 500px; margin-left: auto; margin-right: auto;"> Votez pour décider si vous souhaitez que ce gouvernement prenne le pouvoir.</div>
             <div class="voting-flex">
                 <div id="jaCard" class="vote-card ja-card" onclick="selectVote('JA')">
                     <span class="main-text">ja!</span>
@@ -614,32 +714,11 @@
         <div class="modal-box" style="text-align: center;">
             <div class="modal-title" style="text-align: center; margin-bottom: 5px;">LEGISLATIVE SESSION</div>
             <div style="text-transform: none; color: #b1a996; font-size: 15px; margin-bottom: 10px;">
-                Choisissez une loi à défausser. Les deux lois restantes seront transmises au chancelier.
+                Choisissez une loi à défausser. La loi restante sera promulguée.
             </div>
 
-            <div class="policy-flex">
-                <div id="card1" class="policy-card fascist-card" onclick="selectCardToDiscard('card1')">
-                    <div class="policy-title">FASCIST</div>
-                    <div class="policy-divider"></div>
-                    <div class="policy-icon">💀</div>
-                    <div class="policy-divider"></div>
-                    <div style="font-size:10px; font-weight:bold;">ARTICLE</div>
+            <div class="policy-flex" id="legislativeCardsContainer">
                 </div>
-                <div id="card2" class="policy-card liberal-card" onclick="selectCardToDiscard('card2')">
-                    <div class="policy-title">LIBERAL</div>
-                    <div class="policy-divider"></div>
-                    <div class="policy-icon">🕊️</div>
-                    <div class="policy-divider"></div>
-                    <div style="font-size:10px; font-weight:bold;">ARTICLE</div>
-                </div>
-                <div id="card3" class="policy-card liberal-card" onclick="selectCardToDiscard('card3')">
-                    <div class="policy-title">LIBERAL</div>
-                    <div class="policy-divider"></div>
-                    <div class="policy-icon">🕊️</div>
-                    <div class="policy-divider"></div>
-                    <div style="font-size:10px; font-weight:bold;">ARTICLE</div>
-                </div>
-            </div>
 
             <div class="modal-footer" style="text-align: center; margin-top: 20px;">
                 <button id="discardBtn" style="min-width: 150px;" onclick="submitDiscard()" disabled>DISCARD</button>
@@ -661,20 +740,23 @@
                     <div class="folder-line" style="width: 85%;"></div>
                     <div class="folder-line" style="width: 60%;"></div>
                 </div>
-                <div class="folder-right">
-                    <div class="enacted-mini-card liberal">
-                        <div style="font-size: 14px; font-weight: 700; letter-spacing: 1px;">LIBERAL</div>
-                        <div style="width:70%; border-top:2px dashed rgba(245,238,220,0.4); margin:10px 0;"></div>
-                        <div style="font-size: 30px;">🕊️</div>
-                        <div style="width:70%; border-top:2px dashed rgba(245,238,220,0.4); margin:10px 0;"></div>
-                        <div style="font-size: 9px; font-weight: bold;">ARTICLE</div>
+                <div class="folder-right" id="enactedModalRightSide">
                     </div>
-                </div>
             </div>
 
             <div class="modal-footer" style="text-align: center; margin-top: 25px;">
                 <button class="orange-btn" style="min-width: 150px;" onclick="closeEnactedModal()">OKAY</button>
             </div>
+        </div>
+    </div>
+
+    <div id="gameOverModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box" style="text-align: center; border-color: #cf5728; max-width: 500px;">
+            <div class="modal-title" id="gameOverTitle" style="font-size: 28px; color: #cf5728;">VICTOIRE FASCISTE !</div>
+            <div id="gameOverReason" style="text-transform: none; font-size: 16px; line-height: 1.6; margin: 20px 0; color: #f1ebd9;">
+                L'Allemagne est tombée...
+            </div>
+            <button class="orange-btn" onclick="window.location.reload()">Retour au menu</button>
         </div>
     </div>
 
@@ -688,10 +770,13 @@
         let savedAllPlayers = [];
         let myRoleData = "Liberal";
         
-        // Variables pour suivre l'état de la table de jeu
+        // Simulation des rôles secrets de la table (pour tester la règle d'Hitler)
+        let playerRolesAssignment = {}; 
+
         let presidentIndex = 0; 
         let liberalPoliciesCount = 0;
         let fascistPoliciesCount = 0;
+        let currentDrawnLoiType = "LIBERAL"; // Type de loi finale votée
 
         function createRoom() {
             const name = document.getElementById('usernameCreate').value.trim();
@@ -729,13 +814,9 @@
             selectedChancellior = null;
             document.getElementById('confirmNominationBtn').disabled = true;
 
-            // Déterminer le président actuel selon l'index
             const currentPresident = savedAllPlayers[presidentIndex];
+            renderTableWithRoles(currentPresident, "Aucun");
 
-            // Rendre la table propre au début de la phase
-            renderTableWithRoles(currentPresident, "Aucun", false);
-
-            // Seul le président actuel choisit son chancelier
             const candidates = savedAllPlayers.filter(name => name.toLowerCase() !== currentPresident.toLowerCase());
             
             candidates.forEach(name => {
@@ -763,7 +844,15 @@
             document.getElementById('nominationModal').style.display = 'none';
             
             const currentPresident = savedAllPlayers[presidentIndex];
-            renderTableWithRoles(currentPresident, selectedChancellior, false);
+            renderTableWithRoles(currentPresident, selectedChancellior);
+            
+            // --- VÉRIFICATION DE LA RÈGLE CRUCIALE D'HITLER ---
+            // Si au moins 3 lois fascistes sont en place et que le Chancelier élu est Hitler
+            if (fascistPoliciesCount >= 3 && playerRolesAssignment[selectedChancellior] === "Hitler") {
+                triggerGameOver("FASCIST", "Hitler a été élu Chancelier après le vote de 3 lois fascistes ! Les fascistes l'emportent.");
+                return;
+            }
+
             openVotingModal(currentPresident, selectedChancellior);
         }
 
@@ -800,7 +889,6 @@
                 const wrapper = document.createElement('div');
                 wrapper.className = 'player-card-wrapper';
                 
-                // Simulation réaliste des votes de la table
                 let finalVote = name.toLowerCase() === myName.toLowerCase() ? selectedVoteType.toLowerCase() : (Math.random() > 0.4 ? "ja" : "nein");
                 if (name.toLowerCase() !== myName.toLowerCase()) { if (finalVote === "ja") jaCount++; else neinCount++; }
 
@@ -829,7 +917,6 @@
             if (passed) {
                 document.getElementById('nextLegislativeBtn').style.display = 'inline-block';
             } else {
-                // Si le vote échoue, on passe direct au président suivant après un petit délai
                 setTimeout(() => {
                     resultBar.style.display = 'none';
                     presidentIndex = (presidentIndex + 1) % savedAllPlayers.length;
@@ -842,17 +929,45 @@
             document.getElementById('nextLegislativeBtn').style.display = 'none';
             cardToDiscardId = null;
             document.getElementById('discardBtn').disabled = true;
-            document.getElementById('discardBtn').classList.remove('orange-btn');
             
-            document.querySelectorAll('.policy-card').forEach(c => c.classList.remove('to-discard'));
+            // On tire 3 cartes au hasard pour la session
+            const container = document.getElementById('legislativeCardsContainer');
+            container.innerHTML = '';
+            
+            const randomTypes = [];
+            for(let i=0; i<3; i++) {
+                randomTypes.push(Math.random() > 0.5 ? "FASCIST" : "LIBERAL");
+            }
+
+            randomTypes.forEach((type, index) => {
+                const cardId = `card${index+1}`;
+                const card = document.createElement('div');
+                card.id = cardId;
+                card.className = `policy-card ${type === 'FASCIST' ? 'fascist-card' : 'liberal-card'}`;
+                card.onclick = () => selectCardToDiscard(cardId, type);
+                
+                card.innerHTML = `
+                    <div class="policy-title">${type}</div>
+                    <div class="policy-divider"></div>
+                    <div class="policy-icon">${type === 'FASCIST' ? '💀' : '🕊️'}</div>
+                    <div class="policy-divider"></div>
+                    <div style="font-size:10px; font-weight:bold;">ARTICLE</div>
+                `;
+                container.appendChild(card);
+            });
+
             document.getElementById('legislativeModal').style.display = 'flex';
         }
 
-        function selectCardToDiscard(id) {
+        function selectCardToDiscard(id, type) {
             cardToDiscardId = id;
             document.querySelectorAll('.policy-card').forEach(c => c.classList.remove('to-discard'));
             document.getElementById(id).classList.add('to-discard');
             
+            // La loi promulguée sera l'inverse de celle défaussée si les deux autres concordent
+            // Pour simplifier l'exemple, on prend une loi du type restant non défaussé
+            currentDrawnLoiType = type === "LIBERAL" ? "FASCIST" : "LIBERAL";
+
             document.getElementById('discardBtn').classList.add('orange-btn');
             document.getElementById('discardBtn').disabled = false;
         }
@@ -861,7 +976,28 @@
             if (!cardToDiscardId) return;
             document.getElementById('legislativeModal').style.display = 'none';
             
-            // Le chancelier valide la loi restante
+            // Fabriquer la pop-up Policy Enacted correspondante
+            const rightSide = document.getElementById('enactedModalRightSide');
+            if (currentDrawnLoiType === "LIBERAL") {
+                rightSide.innerHTML = `
+                    <div class="enacted-mini-card liberal">
+                        <div style="font-size: 14px; font-weight: 700; letter-spacing: 1px;">LIBERAL</div>
+                        <div style="width:70%; border-top:2px dashed rgba(245,238,220,0.4); margin:10px 0;"></div>
+                        <div style="font-size: 30px;">🕊️</div>
+                        <div style="width:70%; border-top:2px dashed rgba(245,238,220,0.4); margin:10px 0;"></div>
+                        <div style="font-size: 9px; font-weight: bold;">ARTICLE</div>
+                    </div>`;
+            } else {
+                rightSide.innerHTML = `
+                    <div class="enacted-mini-card fascist">
+                        <div style="font-size: 14px; font-weight: 700; letter-spacing: 1px; color:#1a1c1e;">FASCIST</div>
+                        <div style="width:70%; border-top:2px dashed rgba(26,28,30,0.4); margin:10px 0;"></div>
+                        <div style="font-size: 30px;">💀</div>
+                        <div style="width:70%; border-top:2px dashed rgba(26,28,30,0.4); margin:10px 0;"></div>
+                        <div style="font-size: 9px; font-weight: bold; color:#1a1c1e;">ARTICLE</div>
+                    </div>`;
+            }
+
             setTimeout(() => {
                 document.getElementById('enactedModal').style.display = 'flex';
             }, 600);
@@ -870,28 +1006,66 @@
         function closeEnactedModal() {
             document.getElementById('enactedModal').style.display = 'none';
             
-            // On ajoute 1 au compteur des lois libérales (comme vu sur la pop-up)
-            liberalPoliciesCount++;
-            document.getElementById('libCountText').innerText = liberalPoliciesCount;
+            if (currentDrawnLoiType === "LIBERAL") {
+                liberalPoliciesCount++;
+                document.getElementById('libCountText').innerText = liberalPoliciesCount;
+                // Remplir la case vide correspondante en bas
+                const slot = document.getElementById(`lib-slot-${liberalPoliciesCount - 1}`);
+                if (slot) {
+                    slot.className = "policy-slot filled-liberal";
+                    slot.innerHTML = "🕊️";
+                }
+            } else {
+                fascistPoliciesCount++;
+                document.getElementById('fascCountText').innerText = fascistPoliciesCount;
+                // Remplir la case vide correspondante en bas
+                const slot = document.getElementById(`fasc-slot-${fascistPoliciesCount - 1}`);
+                if (slot) {
+                    slot.className = "policy-slot filled-fascist";
+                    slot.innerHTML = "💀";
+                }
+            }
 
-            // Masquer la barre de vote et afficher la zone centrale avec END TERM
+            // --- VÉRIFICATION DES VICTOIRES PAR COMPTEUR DE LOIS ---
+            if (liberalPoliciesCount >= 5) {
+                triggerGameOver("LIBERAL", "5 lois libérales ont été promulguées ! Les libéraux l'emportent !");
+                return;
+            }
+            if (fascistPoliciesCount >= 6) {
+                triggerGameOver("FASCIST", "6 lois fascistes ont été promulguées ! Les fascistes l'emportent !");
+                return;
+            }
+
             document.getElementById('voteResultBar').style.display = 'none';
             document.getElementById('boardCenterArea').style.display = 'flex';
         }
 
-        // FONCTION APPELÉE AU CLIC SUR LE BOUTON "END TERM"
         function endTermAndNextPlayer() {
-            // Masquer la zone centrale du mandat fini
             document.getElementById('boardCenterArea').style.display = 'none';
-
-            // Changer AUTOMATIQUEMENT de joueur dans l'ordre de la table
             presidentIndex = (presidentIndex + 1) % savedAllPlayers.length;
-
-            // Relancer une nouvelle phase de nomination avec le nouveau président
             openNominationModal();
         }
 
-        function renderTableWithRoles(presName, chancName, showVotes = false) {
+        function triggerGameOver(winner, reason) {
+            const modal = document.getElementById('gameOverModal');
+            const title = document.getElementById('gameOverTitle');
+            const reasonBox = document.getElementById('gameOverReason');
+            
+            if (winner === "LIBERAL") {
+                title.innerText = "VICTOIRE LIBÉRALE !";
+                title.style.color = "#4a7c8c";
+                modal.style.borderColor = "#4a7c8c";
+            } else {
+                title.innerText = "VICTOIRE FASCISTE !";
+                title.style.color = "#cf5728";
+                modal.style.borderColor = "#cf5728";
+            }
+            
+            reasonBox.innerText = reason;
+            modal.style.display = 'flex';
+        }
+
+        function renderTableWithRoles(presName, chancName) {
             const grid = document.getElementById('finalPlayersGrid');
             grid.innerHTML = '';
             savedAllPlayers.forEach(name => {
@@ -939,11 +1113,15 @@
         socket.on('yourRole', (data) => {
             savedAllPlayers = data.allPlayers;
             myRoleData = data.role;
-            presidentIndex = 0; // Le premier de la liste commence Président
+            presidentIndex = 0; 
             
+            // Assigner secrètement un faux rôle d'Hitler à un des bots pour la démo
+            savedAllPlayers.forEach((p, idx) => {
+                playerRolesAssignment[p] = idx === 1 ? "Hitler" : "Liberal";
+            });
+
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('game').style.display = 'block';
-            
             document.getElementById('roleModal').style.display = 'flex';
         });
 
