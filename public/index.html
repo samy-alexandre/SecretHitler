@@ -34,23 +34,27 @@
         .share-container { display: flex; gap: 10px; margin: 15px auto; max-width: 400px; }
         .players-title { font-size: 22px; color: #b1a996; margin-bottom: 15px; }
         .players-grid { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; justify-content: center; }
-        .player-card-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; width: 110px; }
+        .player-card-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; width: 120px; }
         .player-card {
             background-color: #e5dac1; color: #2b2b2b; border: 3px solid #bdae91; border-radius: 8px;
             width: 100%; padding: 10px 5px; text-align: center; font-size: 12px; font-weight: 700; box-sizing: border-box;
         }
         .player-avatar { width: 55px; height: 55px; background-color: #8c826e; border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 22px; }
-        .role-badge { font-size: 10px; margin-top: 4px; color: #cf5728; font-weight: bold; }
+        .role-badge { font-size: 10px; margin-top: 4px; font-weight: bold; padding: 2px 4px; border-radius: 3px; }
+        .role-liberal { color: #2a5d6e; background: rgba(74, 124, 140, 0.2); }
+        .role-fascist { color: #b53f14; background: rgba(207, 87, 40, 0.2); }
+        .role-hitler { color: #9c1515; background: rgba(156, 21, 21, 0.2); border: 1px dashed #9c1515; }
         .vote-bubble {
             position: absolute; top: -22px; left: 50%; transform: translateX(-50%); padding: 3px 15px;
             border-radius: 12px; font-size: 13px; font-weight: 700; z-index: 10;
         }
         .vote-bubble.ja { background-color: #f5eedc; color: #1a1c1e; border: 1px solid #e5dac1; }
         .vote-bubble.nein { background-color: #1a1c1e; color: #f5eedc; border: 1px solid #383e42; }
-        .result-bar { background-color: #111214; color: #ffffff; padding: 12px 0; font-size: 15px; font-weight: 700; text-align: center; margin: 20px 0; }
+        .result-bar { background-color: #111214; color: #ffffff; padding: 12px 0; font-size: 15px; font-weight: 700; text-align: center; margin: 20px 0; min-height: 20px; }
         .player-card.selected-candidate { border-color: #cf5728; background-color: #f7edd6; }
-        .board-center-area { background-color: #23272a; border: 3px solid #1a1c1e; border-radius: 6px; padding: 20px; margin: 25px auto; max-width: 500px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .board-stats-box { background-color: #1a1c1e; border: 2px solid #282b2e; padding: 10px 20px; border-radius: 4px; font-size: 13px; color: #b1a996; text-transform: none; width: 80%; text-align: center; }
+        
+        .board-center-area { background-color: #23272a; border: 3px solid #1a1c1e; border-radius: 6px; padding: 20px; margin: 25px auto; max-width: 550px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        .board-stats-box { background-color: #1a1c1e; border: 2px solid #282b2e; padding: 12px 20px; border-radius: 4px; font-size: 13px; color: #b1a996; text-transform: none; width: 90%; text-align: center; line-height: 1.6; }
         
         .game-boards-container { margin-top: 40px; display: flex; flex-direction: column; gap: 20px; align-items: center; }
         .board-strip { width: 100%; max-width: 750px; border-radius: 6px; padding: 15px 20px; box-sizing: border-box; border: 4px solid #111214; }
@@ -123,14 +127,16 @@
         </div>
 
         <div id="game" style="display:none;">
-            <div id="voteResultBar" class="result-bar" style="display: none;"></div>
+            <div id="voteResultBar" class="result-bar">En attente des actions...</div>
             <div class="players-grid" id="finalPlayersGrid"></div>
             
-            <div id="boardCenterArea" class="board-center-area" style="display: none;">
-                <button id="endTermBtn" class="orange-btn" style="font-size: 24px;" onclick="clickEndTerm()">END TERM</button>
+            <div id="boardCenterArea" class="board-center-area">
+                <button id="endTermBtn" class="orange-btn" style="font-size: 24px; display: none;" onclick="clickEndTerm()">END TERM</button>
                 <div class="board-stats-box">
-                    🕊️ Lois Libérales : <span id="libCountText">0</span>/5 | 💀 Lois Fascistes : <span id="fascCountText">0</span>/6<br>
-                    🎴 Pioche : <span id="deckCountText">17</span> | 🗑️ Défausse : <span id="discardCountText">0</span>
+                    🕊️ Lois sur le Plateau : <span id="libCountText">0</span>/5 | 💀 Lois sur le Plateau : <span id="fascCountText">0</span>/6<br>
+                    <hr style="border:0; border-top: 1px solid #282b2e; margin: 8px 0;">
+                    🎴 Pioche : <strong><span id="deckCountText">17</span> cartes</strong> (🕊️ <span id="deckLibText">6</span> | 💀 <span id="deckFascText">11</span>)<br>
+                    🗑️ Défausse : <strong><span id="discardCountText">0</span> cartes</strong>
                 </div>
             </div>
 
@@ -208,6 +214,7 @@
         let myName = "";
         let currentRoomCode = "";
         let savedAllPlayers = [];
+        let visibleRoles = {}; 
         let myRoleData = "";
         let presidentIndex = 0;
         let selectedChancellor = null;
@@ -217,7 +224,6 @@
         let currentLoadedCards = [];
         let cardToDiscardIndex = null;
 
-        // Détection auto du lien d'invitation avec les paramètres URL
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const lobbyCode = urlParams.get('lobby');
@@ -258,21 +264,29 @@
         socket.on('yourRole', (data) => {
             savedAllPlayers = data.allPlayers;
             myRoleData = data.role;
+            visibleRoles = data.visibleRoles || {}; 
             presidentIndex = data.presidentIndex;
             currentRoomCode = data.roomCode;
 
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('game').style.display = 'block';
             
+            // Mise à jour de la pioche initiale reçue
+            if(data.deckComposition) {
+                document.getElementById('deckCountText').innerText = data.deckComposition.total;
+                document.getElementById('deckLibText').innerText = data.deckComposition.liberal;
+                document.getElementById('deckFascText').innerText = data.deckComposition.fascist;
+            }
+
             checkTurnStructure();
         });
 
         function checkTurnStructure() {
             const currentPres = savedAllPlayers[presidentIndex];
             renderTable(currentPres, "Aucun");
+            document.getElementById('endTermBtn').style.display = 'none';
 
             if (currentPres.startsWith("🤖")) {
-                document.getElementById('voteResultBar').style.display = 'block';
                 document.getElementById('voteResultBar').innerText = `${currentPres} (BOT) réfléchit à son Chancelier...`;
                 setTimeout(() => {
                     const targets = savedAllPlayers.filter(p => p !== currentPres);
@@ -280,7 +294,10 @@
                     socket.emit('proposeChancellor', { roomCode: currentRoomCode, chancellorName: choice });
                 }, 2500);
             } else if (currentPres === myName) {
+                document.getElementById('voteResultBar').innerText = "C'est votre tour ! Nommez votre Chancelier.";
                 openNominationModal();
+            } else {
+                document.getElementById('voteResultBar').innerText = `En attente : ${currentPres} choisit son Chancelier...`;
             }
         }
 
@@ -338,13 +355,11 @@
         socket.on('voteFinished', ({ votes, jaCount, neinCount, passed }) => {
             const resultBar = document.getElementById('voteResultBar');
             resultBar.innerText = `${jaCount} JA! vs ${neinCount} NEIN - Vote ${passed ? 'ACCEPTÉ' : 'REFUSÉ'}`;
-            resultBar.style.display = 'block';
 
             const currentPres = savedAllPlayers[presidentIndex];
             renderTable(currentPres, selectedChancellor, votes);
         });
 
-        // Déclencheur reçu uniquement si le président de la session législative est un humain
         socket.on('triggerLegislativeSession', ({ president }) => {
             if (president === myName) {
                 document.getElementById('nextLegislativeBtn').style.display = 'inline-block';
@@ -379,10 +394,10 @@
             
             if (currentLegislativeRole === "PRESIDENT") {
                 title.innerText = "PRÉSIDENCE : CHOIX DES LOIS";
-                prompt.innerText = "Sélectionnez la carte à DÉFAUSSER (3 disponibles). Les 2 autres iront au Chancelier.";
+                prompt.innerText = "Sélectionnez la carte à DÉFAUSSER. Les 2 autres iront au Chancelier.";
             } else {
                 title.innerText = "CHANCELLERIE : LOI FINALE";
-                prompt.innerText = "Sélectionnez la carte à DÉFAUSSER (2 disponibles). La dernière sera placée sur le plateau.";
+                prompt.innerText = "Sélectionnez la carte à DÉFAUSSER. La dernière sera appliquée.";
             }
 
             const container = document.getElementById('legislativeCardsContainer');
@@ -415,11 +430,16 @@
             }
         }
 
-        socket.on('policyEnactedUpdate', ({ policyType, liberalCount, fascistCount, cardsCount, discardCount }) => {
+        socket.on('policyEnactedUpdate', ({ policyType, liberalCount, fascistCount, cardsCount, discardCount, deckComposition }) => {
             document.getElementById('libCountText').innerText = liberalCount;
             document.getElementById('fascCountText').innerText = fascistCount;
             document.getElementById('deckCountText').innerText = cardsCount;
             document.getElementById('discardCountText').innerText = discardCount;
+
+            if(deckComposition) {
+                document.getElementById('deckLibText').innerText = deckComposition.liberal;
+                document.getElementById('deckFascText').innerText = deckComposition.fascist;
+            }
 
             if (policyType === 'LIBERAL') {
                 const slot = document.getElementById(`lib-slot-${liberalCount - 1}`);
@@ -431,24 +451,26 @@
 
             const currentPres = savedAllPlayers[presidentIndex];
             if (currentPres === myName) {
-                document.getElementById('boardCenterArea').style.display = 'flex';
+                document.getElementById('endTermBtn').style.display = 'inline-block';
             }
         });
 
         socket.on('cleanVoteBar', () => {
-            document.getElementById('voteResultBar').style.display = 'none';
+            document.getElementById('voteResultBar').innerText = "Gouvernement suivant...";
         });
 
         function clickEndTerm() {
-            document.getElementById('boardCenterArea').style.display = 'none';
-            document.getElementById('voteResultBar').style.display = 'none';
+            document.getElementById('endTermBtn').style.display = 'none';
             socket.emit('endTerm', { roomCode: currentRoomCode });
         }
 
-        socket.on('newTurn', ({ presidentIndex: nextIdx, currentPresident }) => {
+        socket.on('newTurn', ({ presidentIndex: nextIdx, currentPresident, deckComposition }) => {
             presidentIndex = nextIdx;
-            document.getElementById('boardCenterArea').style.display = 'none';
-            document.getElementById('voteResultBar').style.display = 'none';
+            if(deckComposition) {
+                document.getElementById('deckCountText').innerText = deckComposition.total;
+                document.getElementById('deckLibText').innerText = deckComposition.liberal;
+                document.getElementById('deckFascText').innerText = deckComposition.fascist;
+            }
             checkTurnStructure();
         });
 
@@ -476,9 +498,19 @@
                 }
 
                 let badges = "";
-                if (name === myName) badges += `<div class="role-badge">${myRoleData}</div>`;
-                if (name === presName) badges += `<div class="role-badge" style="color:#69747c;">PRESIDENT</div>`;
-                if (name === chancName) badges += `<div class="role-badge" style="color:#bdae91;">CHANCELLOR</div>`;
+                
+                // Affichage dynamique et secret des rôles autorisés par le serveur
+                if (name === myName) {
+                    let styleClass = myRoleData === 'Liberal' ? 'role-liberal' : (myRoleData === 'Hitler' ? 'role-hitler' : 'role-fascist');
+                    badges += `<div class="role-badge ${styleClass}">${myRoleData}</div>`;
+                } else if (visibleRoles[name]) {
+                    let sharedRole = visibleRoles[name];
+                    let styleClass = sharedRole === 'Hitler' ? 'role-hitler' : 'role-fascist';
+                    badges += `<div class="role-badge ${styleClass}">${sharedRole}</div>`;
+                }
+
+                if (name === presName) badges += `<div class="role-badge" style="color:#ffffff; background:#69747c;">PRESIDENT</div>`;
+                if (name === chancName) badges += `<div class="role-badge" style="color:#2b2b2b; background:#bdae91;">CHANCELLOR</div>`;
 
                 wrapper.innerHTML += `<div class="player-card"><div class="player-avatar">👤</div>${name}${badges}</div>`;
                 grid.appendChild(wrapper);
