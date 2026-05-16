@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Hitler - IA Table</title>
+    <style>
+        body { font-family: sans-serif; background: #141414; color: #f5f5f5; text-align: center; padding: 20px; }
+        .container { max-width: 600px; margin: 40px auto; padding: 30px; background: #1f1f1f; border-radius: 12px; }
+        h1 { color: #e74c3c; }
+        input { background: #2d2d2d; border: 2px solid #3d3d3d; color: white; padding: 12px; font-size: 16px; border-radius: 6px; }
+        button { background: #e74c3c; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; margin-top: 15px; }
+        ul { list-style: none; padding: 0; }
+        li { background: #292929; margin: 8px 0; padding: 12px; border-radius: 6px; border-left: 4px solid #e74c3c; }
+        .role-box { padding: 20px; border-radius: 8px; margin: 25px 0; font-size: 28px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SECRET HITLER</h1>
+        <div id="setup">
+            <input type="text" id="username" placeholder="Pseudo...">
+            <br><button onclick="join()">Rejoindre</button>
+        </div>
+        <div id="lobby" style="display:none;">
+            <h3>Joueurs (<span id="count">0</span>/10) :</h3>
+            <ul id="playerList"></ul>
+            <button onclick="start()">Lancer la partie</button>
+        </div>
+        <div id="game" style="display:none;">
+            <h3>Ton allégeance secrète</h3>
+            <div id="roleDisplay" class="role-box"></div>
+            <p id="roleInfo"></p>
+        </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        function join() {
+            const name = document.getElementById('username').value.trim();
+            if(!name) return;
+            socket.emit('joinGame', name);
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('lobby').style.display = 'block';
+        }
+        function start() { socket.emit('startGame'); }
+        socket.on('updatePlayers', (list) => {
+            document.getElementById('count').innerText = list.length;
+            const ul = document.getElementById('playerList');
+            ul.innerHTML = '';
+            list.forEach(name => { const li = document.createElement('li'); li.innerText = name; ul.appendChild(li); });
+        });
+        socket.on('yourRole', (data) => {
+            document.getElementById('lobby').style.display = 'none';
+            document.getElementById('game').style.display = 'block';
+            const display = document.getElementById('roleDisplay');
+            display.innerText = data.role;
+            display.style.backgroundColor = data.role === 'Liberal' ? '#2980b9' : '#c0392b';
+            document.getElementById('roleInfo').innerText = data.info;
+        });
+        socket.on('gameReset', (msg) => { alert(msg); window.location.reload(); });
+        socket.on('error', (msg) => alert(msg));
+    </script>
+</body>
+</html>
