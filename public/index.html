@@ -73,11 +73,12 @@
         .vote-card.nein-card { background-color: #1a1c1e; color: #f5eedc; }
         .vote-card.selected-vote { border-color: #cf5728 !important; }
 
-        /* STYLE DES JOLIES CARTES DE LOIS CONFORMES AUX CAPTURES */
+        /* CARTES DE LOIS */
         .policy-card { 
             width: 120px; height: 180px; border-radius: 10px; border: 4px solid #ebdcb9; 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
             cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
         }
         .policy-card.fascist-card { background-color: #cf5728; color: #1a1c1e; border-color: #fcebe6; }
         .policy-card.liberal-card { background-color: #4a7c8c; color: #f5eedc; border-color: #e6f2f7; }
@@ -212,11 +213,11 @@
         let selectedChancellor = null;
         let selectedVoteType = null;
         
-        let currentLegislativeRole = ""; // "PRESIDENT" ou "CHANCELLOR"
+        let currentLegislativeRole = "";
         let currentLoadedCards = [];
         let cardToDiscardIndex = null;
 
-        // Détection auto du lien d'invitation
+        // Détection auto du lien d'invitation avec les paramètres URL
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const lobbyCode = urlParams.get('lobby');
@@ -271,12 +272,13 @@
             renderTable(currentPres, "Aucun");
 
             if (currentPres.startsWith("🤖")) {
-                document.getElementById('nominationPrompt').innerText = `${currentPres} (BOT) choisit un chancelier...`;
+                document.getElementById('voteResultBar').style.display = 'block';
+                document.getElementById('voteResultBar').innerText = `${currentPres} (BOT) réfléchit à son Chancelier...`;
                 setTimeout(() => {
                     const targets = savedAllPlayers.filter(p => p !== currentPres);
                     const choice = targets[Math.floor(Math.random() * targets.length)];
                     socket.emit('proposeChancellor', { roomCode: currentRoomCode, chancellorName: choice });
-                }, 2000);
+                }, 2500);
             } else if (currentPres === myName) {
                 openNominationModal();
             }
@@ -340,35 +342,26 @@
 
             const currentPres = savedAllPlayers[presidentIndex];
             renderTable(currentPres, selectedChancellor, votes);
+        });
 
-            if (passed) {
-                // Si tu es Président ou Chancelier, on t'affiche le bouton pour tirer les cartes
-                if (currentPres === myName || selectedChancellor === myName) {
-                    document.getElementById('nextLegislativeBtn').style.display = 'inline-block';
-                }
-                // Si ce ne sont que des bots au pouvoir, le serveur gère la suite tout seul !
-            } else {
-                setTimeout(() => {
-                    resultBar.style.display = 'none';
-                    socket.emit('endTerm', { roomCode: currentRoomCode });
-                }, 3000);
+        // Déclencheur reçu uniquement si le président de la session législative est un humain
+        socket.on('triggerLegislativeSession', ({ president }) => {
+            if (president === myName) {
+                document.getElementById('nextLegislativeBtn').style.display = 'inline-block';
             }
         });
 
-        // ACTION : CLIC SUR LE BOUTON POUR DEMANDER LES CARTES AU SERVEUR
         function triggerCardsDraw() {
             document.getElementById('nextLegislativeBtn').style.display = 'none';
             socket.emit('requestPresidentCards', { roomCode: currentRoomCode, username: myName });
         }
 
-        // ÉTAPE 1 INTERFACE : LE PRÉSIDENT REÇOIT SES 3 CARTES
         socket.on('presidentCardsReceived', (cards) => {
             currentLegislativeRole = "PRESIDENT";
             currentLoadedCards = cards;
             openLegislativeModal();
         });
 
-        // ÉTAPE 2 INTERFACE : LE CHANCELIER REÇOIT SES 2 CARTES
         socket.on('chancellorCardsPhase', ({ chancellor, cards }) => {
             if (chancellor === myName) {
                 currentLegislativeRole = "CHANCELLOR";
@@ -386,10 +379,10 @@
             
             if (currentLegislativeRole === "PRESIDENT") {
                 title.innerText = "PRÉSIDENCE : CHOIX DES LOIS";
-                prompt.innerText = "Pioche de 3 cartes. Sélectionnez LA loi à DÉFAUSSER (les 2 autres iront au Chancelier).";
+                prompt.innerText = "Sélectionnez la carte à DÉFAUSSER (3 disponibles). Les 2 autres iront au Chancelier.";
             } else {
                 title.innerText = "CHANCELLERIE : LOI FINALE";
-                prompt.innerText = "Réception de 2 cartes. Sélectionnez LA loi à DÉFAUSSER (la carte restante sera promulguée !).";
+                prompt.innerText = "Sélectionnez la carte à DÉFAUSSER (2 disponibles). La dernière sera placée sur le plateau.";
             }
 
             const container = document.getElementById('legislativeCardsContainer');
@@ -398,9 +391,8 @@
             currentLoadedCards.forEach((type, idx) => {
                 const card = document.createElement('div');
                 card.className = `policy-card ${type === 'FASCIST' ? 'fascist-card' : 'liberal-card'}`;
-                
                 const icon = type === 'FASCIST' ? '💀' : '🕊️';
-                card.innerHTML = `<div class="policy-icon">${icon}</div><h3>${type}</h3><span style="font-size:9px; opacity:0.7;">ARTICLE</span>`;
+                card.innerHTML = `<div class="policy-icon">${icon}</div><h3>${type}</h3>`;
                 
                 card.onclick = () => {
                     document.querySelectorAll('.policy-card').forEach(c => c.classList.remove('to-discard'));
@@ -416,7 +408,6 @@
 
         function submitDiscard() {
             document.getElementById('legislativeModal').style.display = 'none';
-            
             if (currentLegislativeRole === "PRESIDENT") {
                 socket.emit('presidentDiscard', { roomCode: currentRoomCode, discardedIndex: cardToDiscardIndex });
             } else {
@@ -425,13 +416,11 @@
         }
 
         socket.on('policyEnactedUpdate', ({ policyType, liberalCount, fascistCount, cardsCount, discardCount }) => {
-            document.getElementById('voteResultBar').style.display = 'none';
             document.getElementById('libCountText').innerText = liberalCount;
             document.getElementById('fascCountText').innerText = fascistCount;
             document.getElementById('deckCountText').innerText = cardsCount;
             document.getElementById('discardCountText').innerText = discardCount;
 
-            // Remplissage des plateaux graphiques
             if (policyType === 'LIBERAL') {
                 const slot = document.getElementById(`lib-slot-${liberalCount - 1}`);
                 if (slot) { slot.className = "policy-slot filled-liberal"; slot.innerHTML = "🕊️"; }
@@ -440,24 +429,26 @@
                 if (slot) { slot.className = "policy-slot filled-fascist"; slot.innerHTML = "💀"; }
             }
 
-            // Gestion du bouton END TERM
             const currentPres = savedAllPlayers[presidentIndex];
             if (currentPres === myName) {
                 document.getElementById('boardCenterArea').style.display = 'flex';
-            } else {
-                // Si c'est un bot président, il passe la main après 2 secondes
-                setTimeout(() => { socket.emit('endTerm', { roomCode: currentRoomCode }); }, 2500);
             }
+        });
+
+        socket.on('cleanVoteBar', () => {
+            document.getElementById('voteResultBar').style.display = 'none';
         });
 
         function clickEndTerm() {
             document.getElementById('boardCenterArea').style.display = 'none';
+            document.getElementById('voteResultBar').style.display = 'none';
             socket.emit('endTerm', { roomCode: currentRoomCode });
         }
 
         socket.on('newTurn', ({ presidentIndex: nextIdx, currentPresident }) => {
             presidentIndex = nextIdx;
             document.getElementById('boardCenterArea').style.display = 'none';
+            document.getElementById('voteResultBar').style.display = 'none';
             checkTurnStructure();
         });
 
