@@ -271,12 +271,12 @@
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('game').style.display = 'block';
             
-            // Mise à jour de la pioche initiale reçue
             if(data.deckComposition) {
                 document.getElementById('deckCountText').innerText = data.deckComposition.total;
                 document.getElementById('deckLibText').innerText = data.deckComposition.liberal;
                 document.getElementById('deckFascText').innerText = data.deckComposition.fascist;
             }
+            document.getElementById('discardCountText').innerText = data.discardCount || 0;
 
             checkTurnStructure();
         });
@@ -358,6 +358,16 @@
 
             const currentPres = savedAllPlayers[presidentIndex];
             renderTable(currentPres, selectedChancellor, votes);
+        });
+
+        // Mise à jour synchrone du compteur dès le moment de la pioche
+        socket.on('updateDeckCounts', ({ cardsCount, discardCount, deckComposition }) => {
+            document.getElementById('deckCountText').innerText = cardsCount;
+            document.getElementById('discardCountText').innerText = discardCount;
+            if(deckComposition) {
+                document.getElementById('deckLibText').innerText = deckComposition.liberal;
+                document.getElementById('deckFascText').innerText = deckComposition.fascist;
+            }
         });
 
         socket.on('triggerLegislativeSession', ({ president }) => {
@@ -464,8 +474,9 @@
             socket.emit('endTerm', { roomCode: currentRoomCode });
         }
 
-        socket.on('newTurn', ({ presidentIndex: nextIdx, currentPresident, deckComposition }) => {
+        socket.on('newTurn', ({ presidentIndex: nextIdx, currentPresident, deckComposition, discardCount }) => {
             presidentIndex = nextIdx;
+            document.getElementById('discardCountText').innerText = discardCount;
             if(deckComposition) {
                 document.getElementById('deckCountText').innerText = deckComposition.total;
                 document.getElementById('deckLibText').innerText = deckComposition.liberal;
@@ -499,7 +510,6 @@
 
                 let badges = "";
                 
-                // Affichage dynamique et secret des rôles autorisés par le serveur
                 if (name === myName) {
                     let styleClass = myRoleData === 'Liberal' ? 'role-liberal' : (myRoleData === 'Hitler' ? 'role-hitler' : 'role-fascist');
                     badges += `<div class="role-badge ${styleClass}">${myRoleData}</div>`;
