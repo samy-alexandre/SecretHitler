@@ -3,62 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secret Hitler - IA Table</title>
+    <title>Secret Hitler - Salon Privé</title>
     <style>
-        body { font-family: sans-serif; background: #141414; color: #f5f5f5; text-align: center; padding: 20px; }
-        .container { max-width: 600px; margin: 40px auto; padding: 30px; background: #1f1f1f; border-radius: 12px; }
-        h1 { color: #e74c3c; }
-        input { background: #2d2d2d; border: 2px solid #3d3d3d; color: white; padding: 12px; font-size: 16px; border-radius: 6px; }
-        button { background: #e74c3c; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; margin-top: 15px; }
+        body { font-family: sans-serif; background: #141414; color: #f5f5f5; text-align: center; padding: 20px; margin: 0; }
+        .container { max-width: 600px; margin: 40px auto; padding: 30px; background: #1f1f1f; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+        h1 { color: #e74c3c; letter-spacing: 1px; }
+        .code-box { font-size: 32px; font-weight: bold; color: #f1c40f; background: #2c3e50; padding: 10px; border-radius: 6px; display: inline-block; margin: 15px 0; letter-spacing: 4px; }
+        input { background: #2d2d2d; border: 2px solid #3d3d3d; color: white; padding: 12px; font-size: 16px; border-radius: 6px; margin: 5px; width: 80%; max-width: 260px; text-align: center; }
+        button { background: #e74c3c; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; margin: 10px 5px; }
+        button.secondary { background: #34495e; }
         ul { list-style: none; padding: 0; }
-        li { background: #292929; margin: 8px 0; padding: 12px; border-radius: 6px; border-left: 4px solid #e74c3c; }
+        li { background: #292929; margin: 8px 0; padding: 12px; border-radius: 6px; border-left: 4px solid #e74c3c; font-size: 18px; }
         .role-box { padding: 20px; border-radius: 8px; margin: 25px 0; font-size: 28px; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>SECRET HITLER</h1>
+        <h1>SECRET HITLER ONLINE</h1>
+        
         <div id="setup">
-            <input type="text" id="username" placeholder="Pseudo...">
-            <br><button onclick="join()">Rejoindre</button>
+            <input type="text" id="username" placeholder="Ton Pseudo..."><br>
+            <hr style="border-color: #333; margin: 20px 0;">
+            <button onclick="createRoom()">Créer une nouvelle table</button>
+            <p style="color: #888; font-size: 14px;">OU rejoins une table existante :</p>
+            <input type="text" id="roomCodeInput" placeholder="Code à 4 lettres" maxlength="4" style="text-transform: uppercase;"><br>
+            <button class="secondary" onclick="joinRoom()">Rejoindre la table</button>
         </div>
+
         <div id="lobby" style="display:none;">
-            <h3>Joueurs (<span id="count">0</span>/10) :</h3>
+            <h2>Code d'invitation :</h2>
+            <div id="displayCode" class="code-box">----</div>
+            <p style="color: #aaa; font-size: 14px;">Partage ce code avec tes potes pour qu'ils se connectent.</p>
+            
+            <h3>Joueurs à la table :</h3>
             <ul id="playerList"></ul>
+            
             <button onclick="start()">Lancer la partie</button>
+            <p style="font-size: 12px; color: #666;">Note : Si tu es seul, la table sera complétée par des bots pour tester.</p>
         </div>
+
         <div id="game" style="display:none;">
             <h3>Ton allégeance secrète</h3>
             <div id="roleDisplay" class="role-box"></div>
-            <p id="roleInfo"></p>
+            <p id="roleInfo" style="font-size: 16px; color: #ccc; line-height: 1.4;"></p>
+            <hr style="border-color: #333;">
+            <h4>Liste finale des joueurs de la partie :</h4>
+            <ul id="finalPlayers"></ul>
         </div>
     </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        function join() {
+
+        function getUsername() {
             const name = document.getElementById('username').value.trim();
-            if(!name) return;
-            socket.emit('joinGame', name);
+            if (!name) alert("Mets un pseudo d'abord !");
+            return name;
+        }
+
+        function createRoom() {
+            const name = getUsername();
+            if (!name) return;
+            socket.emit('createGame', name);
+        }
+
+        function joinRoom() {
+            const name = getUsername();
+            const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+            if (!name) return;
+            if (code.length !== 4) return alert("Le code doit faire 4 lettres !");
+            socket.emit('joinGame', { username: name, roomCode: code });
+            document.getElementById('displayCode').innerText = code;
+        }
+
+        function start() {
+            socket.emit('startGame');
+        }
+
+        socket.on('roomCreated', (code) => {
+            document.getElementById('displayCode').innerText = code;
             document.getElementById('setup').style.display = 'none';
             document.getElementById('lobby').style.display = 'block';
-        }
-        function start() { socket.emit('startGame'); }
+        });
+
         socket.on('updatePlayers', (list) => {
-            document.getElementById('count').innerText = list.length;
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('lobby').style.display = 'block';
             const ul = document.getElementById('playerList');
             ul.innerHTML = '';
-            list.forEach(name => { const li = document.createElement('li'); li.innerText = name; ul.appendChild(li); });
+            list.forEach(name => {
+                const li = document.createElement('li');
+                li.innerText = name;
+                ul.appendChild(li);
+            });
         });
+
         socket.on('yourRole', (data) => {
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('game').style.display = 'block';
+            
             const display = document.getElementById('roleDisplay');
             display.innerText = data.role;
             display.style.backgroundColor = data.role === 'Liberal' ? '#2980b9' : '#c0392b';
             document.getElementById('roleInfo').innerText = data.info;
+
+            // Affiche la liste complète de la table (avec les bots si ajoutés)
+            const ul = document.getElementById('finalPlayers');
+            ul.innerHTML = '';
+            data.allPlayers.forEach(name => {
+                const li = document.createElement('li');
+                li.innerText = name;
+                ul.appendChild(li);
+            });
         });
-        socket.on('gameReset', (msg) => { alert(msg); window.location.reload(); });
+
+        socket.on('gameReset', (msg) => {
+            alert(msg);
+            window.location.reload();
+        });
+
         socket.on('error', (msg) => alert(msg));
     </script>
 </body>
