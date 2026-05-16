@@ -11,7 +11,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const games = {};
 
-// Paquet officiel de départ : 6 lois Libérales et 11 lois Fascistes
 function generateDeck() {
     let deck = [];
     for (let i = 0; i < 6; i++) deck.push('LIBERAL');
@@ -19,7 +18,6 @@ function generateDeck() {
     return deck.sort(() => Math.random() - 0.5);
 }
 
-// Calculer la composition exacte restante
 function getDeckComposition(deck) {
     let lib = 0;
     let fasc = 0;
@@ -56,7 +54,7 @@ io.on('connection', (socket) => {
             currentChancellor: null,
             votesReceived: {},
             deck: [],
-            discardPile: [] // Transformé en tableau pour suivre les vraies cartes défaussées !
+            discardPile: []
         };
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
@@ -85,7 +83,7 @@ io.on('connection', (socket) => {
         while (game.players.length < 5) {
             game.players.push({
                 id: `bot_${botCount}`,
-                username: `🤖 Bot ${botCount}`,
+                username: `🤖 BOT ${botCount}`,
                 isBot: true,
                 role: null
             });
@@ -184,16 +182,15 @@ io.on('connection', (socket) => {
             });
 
             if (passed) {
-                // S'il reste moins de 3 cartes, on prend la défausse existante et on la remélange dans la pioche !
+                // Remélange uniquement si la pioche est vide pour piocher 3 cartes
                 if (game.deck.length < 3) {
                     game.deck = [...game.deck, ...game.discardPile].sort(() => Math.random() - 0.5);
                     game.discardPile = [];
                 }
                 
-                // On pioche strictement 3 cartes
+                // Descente immédiate à 14 cartes dans la pioche
                 game.legislativeCards = [game.deck.pop(), game.deck.pop(), game.deck.pop()];
 
-                // Envoyer la mise à jour immédiate du nombre de cartes après pioche
                 io.to(roomCode).emit('updateDeckCounts', {
                     cardsCount: game.deck.length,
                     discardCount: game.discardPile.length,
@@ -235,9 +232,15 @@ io.on('connection', (socket) => {
     });
 
     function handlePresidentDiscardLogic(game, roomCode, discardedIndex) {
-        // Le président choisit sa carte à jeter, elle va dans la défausse
         const discarded = game.legislativeCards.splice(discardedIndex, 1)[0];
         game.discardPile.push(discarded);
+
+        // Envoi de la mise à jour : Discard Pile passe immédiatement à +1
+        io.to(roomCode).emit('updateDeckCounts', {
+            cardsCount: game.deck.length,
+            discardCount: game.discardPile.length,
+            deckComposition: getDeckComposition(game.deck)
+        });
 
         const chancellorPlayer = game.players.find(p => p.username === game.currentChancellor);
 
@@ -248,7 +251,7 @@ io.on('connection', (socket) => {
                 game.discardPile.push(botDiscarded);
 
                 const finalPolicy = game.legislativeCards[0];
-                game.legislativeCards = []; // Vider le reliquat proprement
+                game.legislativeCards = [];
                 enactFinalPolicy(game, roomCode, finalPolicy);
             }, 2000);
         } else {
@@ -263,13 +266,11 @@ io.on('connection', (socket) => {
         const game = games[roomCode];
         if (!game) return;
 
-        // Le chancelier choisit sa carte à jeter, elle va en défausse
         const discarded = game.legislativeCards.splice(discardedIndex, 1)[0];
         game.discardPile.push(discarded);
 
-        // La dernière carte restante est promulguée
         const finalPolicy = game.legislativeCards[0];
-        game.legislativeCards = []; // Vider l'historique du tour
+        game.legislativeCards = [];
         enactFinalPolicy(game, roomCode, finalPolicy);
     });
 
