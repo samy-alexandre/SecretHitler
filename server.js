@@ -11,7 +11,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const games = {};
 
-// Création d'un deck complet et mélangé (6 Libérales, 11 Fascistes)
 function generateDeck() {
     let deck = [];
     for (let i = 0; i < 6; i++) deck.push('LIBERAL');
@@ -51,7 +50,7 @@ io.on('connection', (socket) => {
             votesReceived: {},
             deck: [],
             discardPile: 0,
-            legislativeCards: [] // Stocke les cartes en cours de vote
+            legislativeCards: []
         };
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
@@ -61,12 +60,9 @@ io.on('connection', (socket) => {
     socket.on('joinGame', ({ username, roomCode }) => {
         const game = games[roomCode];
         if (!game) return socket.emit('error', 'Salon introuvable !');
-        if (game.status !== 'lobby') return socket.emit('error', 'Partie déjà lancée !');
-        if (game.players.length >= 10) return socket.emit('error', 'Salon complet !');
-
         game.players.push({ id: socket.id, username: username, isBot: false, role: null });
         socket.join(roomCode);
-        io.to(roomCode).emit('updatePlayers', game.players.map(p => p.username));
+        io.to(roomCode).emit('updatePlayers', games[roomCode].players.map(p => p.username));
     });
 
     socket.on('startGame', () => {
@@ -80,7 +76,7 @@ io.on('connection', (socket) => {
         let botCount = 1;
         while (game.players.length < 5) {
             game.players.push({
-                id: `bot_${botCount}_${Math.random().toString(36).substring(2,5)}`,
+                id: `bot_${botCount}`,
                 username: `🤖 Bot ${botCount}`,
                 isBot: true,
                 role: null
@@ -121,7 +117,6 @@ io.on('connection', (socket) => {
         game.votesReceived = {}; 
 
         const chancellorPlayer = game.players.find(p => p.username === chancellorName);
-
         if (game.fascistPolicies >= 3 && chancellorPlayer && chancellorPlayer.role === "Hitler") {
             io.to(roomCode).emit('gameOver', {
                 winner: 'FASCIST',
@@ -133,7 +128,7 @@ io.on('connection', (socket) => {
 
         game.players.forEach(p => {
             if (p.isBot) {
-                game.votesReceived[p.username] = Math.random() > 0.4 ? 'ja' : 'nein';
+                game.votesReceived[p.username] = Math.random() > 0.3 ? 'ja' : 'nein';
             }
         });
 
@@ -168,66 +163,78 @@ io.on('connection', (socket) => {
             });
 
             if (passed) {
-                // Si le vote passe, le président pioche 3 cartes
                 if (game.deck.length < 3) {
                     game.deck = generateDeck();
                     game.discardPile = 0;
                 }
                 game.legislativeCards = [game.deck.pop(), game.deck.pop(), game.deck.pop()];
 
-                // On informe le client pour démarrer la session législative
-                io.to(roomCode).emit('triggerLegislativeSession', {
-                    president: game.currentPresident,
-                    chancellor: game.currentChancellor,
-                    cardsCount: game.deck.length,
-                    discardCount: game.discardPile
-                });
+                // RECONNAISSANCE DU PRÉSIDENT (BOT OU HUMAIN)
+                const currentPresPlayer = game.players.find(p => p.username === game.currentPresident);
+                
+                if (currentPresPlayer && currentPresPlayer.isBot) {
+                    // SI LE PRÉSIDENT EST ET RESTE UN BOT : Il pioche et défausse automatiquement après 2 secondes
+                    setTimeout(() => {
+                        handlePresidentDiscardLogic(game, roomCode, Math.floor(Math.random() * 3));
+                    }, 2000);
+                } else {
+                    // SI LE PRÉSIDENT EST HUMAIN : On attend qu'il clique sur son bouton
+                    io.to(roomCode).emit('triggerLegislativeSession', {
+                        president: game.currentPresident,
+                        chancellor: game.currentChancellor,
+                        cardsCount: game.deck.length,
+                        discardCount: game.discardPile
+                    });
+                }
+            } else {
+                setTimeout(() => {
+                    io.to(roomCode).emit('cleanVoteBar');
+                    handleEndTermLogic(game, roomCode);
+                }, 3000);
             }
         }
     });
 
-    // ÉTAPE 1 : LE PRÉSIDENT REÇOIT SES 3 CARTES
     socket.on('requestPresidentCards', ({ roomCode, username }) => {
         const game = games[roomCode];
         if (!game) return;
-
         if (game.currentPresident === username) {
             socket.emit('presidentCardsReceived', game.legislativeCards);
         }
     });
 
-    // ÉTAPE 2 : LE PRÉSIDENT EN DÉFAUSSE UNE ET ENVOIE LES 2 RESTANTES AU CHANCELIER
     socket.on('presidentDiscard', ({ roomCode, discardedIndex }) => {
         const game = games[roomCode];
         if (!game) return;
+        handlePresidentDiscardLogic(game, roomCode, discardedIndex);
+    });
 
-        // On retire la carte défaussée par le président
-        const discarded = game.legislativeCards.splice(discardedIndex, 1)[0];
+    // Centralisation de la défausse du président pour humain ET bot
+    function handlePresidentDiscardLogic(game, roomCode, discardedIndex) {
+        game.legislativeCards.splice(discardedIndex, 1);
         game.discardPile++;
 
         const chancellorPlayer = game.players.find(p => p.username === game.currentChancellor);
 
         if (chancellorPlayer && chancellorPlayer.isBot) {
-            // SI LE CHANCELIER EST UN BOT : Il choisit au hasard parmi les 2 cartes restantes
+            // SI LE CHANCELIER EST UN BOT : Il choisit instantanément sa carte
             setTimeout(() => {
                 const botDiscardIdx = Math.floor(Math.random() * game.legislativeCards.length);
-                const botDiscarded = game.legislativeCards.splice(botDiscardIdx, 1)[0];
+                game.legislativeCards.splice(botDiscardIdx, 1);
                 game.discardPile++;
 
-                // La seule carte restante est promulguée
                 const finalPolicy = game.legislativeCards[0];
                 enactFinalPolicy(game, roomCode, finalPolicy);
             }, 2000);
         } else {
-            // SI LE CHANCELIER EST UN JOUEUR RÉEL : On lui pousse ses 2 cartes
+            // SI LE CHANCELIER EST HUMAIN : On lui envoie ses 2 options
             io.to(roomCode).emit('chancellorCardsPhase', {
                 chancellor: game.currentChancellor,
                 cards: game.legislativeCards
             });
         }
-    });
+    }
 
-    // ÉTAPE 3 : LE CHANCELIER HUMAIN DÉFAUSSE SA CARTE ET PROMULGUE LA DERNIÈRE
     socket.on('chancellorDiscard', ({ roomCode, discardedIndex }) => {
         const game = games[roomCode];
         if (!game) return;
@@ -235,7 +242,6 @@ io.on('connection', (socket) => {
         game.legislativeCards.splice(discardedIndex, 1);
         game.discardPile++;
 
-        // La carte restante est promulguée
         const finalPolicy = game.legislativeCards[0];
         enactFinalPolicy(game, roomCode, finalPolicy);
     });
@@ -258,13 +264,24 @@ io.on('connection', (socket) => {
         } else if (game.fascistPolicies >= 6) {
             io.to(roomCode).emit('gameOver', { winner: 'FASCIST', reason: '6 lois fascistes ont été promulguées !' });
             game.status = 'game_over';
+        } else {
+            // Si le président en cours est un bot, on passe automatiquement au tour d'après
+            const currentPresPlayer = game.players.find(p => p.username === game.currentPresident);
+            if (currentPresPlayer && currentPresPlayer.isBot) {
+                setTimeout(() => {
+                    handleEndTermLogic(game, roomCode);
+                }, 3000);
+            }
         }
     }
 
     socket.on('endTerm', ({ roomCode }) => {
         const game = games[roomCode];
         if (!game) return;
+        handleEndTermLogic(game, roomCode);
+    });
 
+    function handleEndTermLogic(game, roomCode) {
         game.presidentIndex = (game.presidentIndex + 1) % game.players.length;
         game.currentPresident = game.players[game.presidentIndex].username;
         game.currentChancellor = null;
@@ -274,7 +291,7 @@ io.on('connection', (socket) => {
             presidentIndex: game.presidentIndex,
             currentPresident: game.currentPresident
         });
-    });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
